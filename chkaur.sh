@@ -81,11 +81,25 @@ EOF
 	done
 	;;
 -a)
-	# Check for package in Manjaro repo against Arch repo package
-	# Sync Arch repo to pacman folder in current directory
-	sudo pacman -b ./pacman --config ./pacman-$(uname -m).conf -Sy
-	
-	#pacman --config ./pacman-i686.conf -Ss mousepad
+	# First sync Arch repo to pacman folder in current directory
+	sudo pacman -b ./pacman --config ./pacman/pacman-$(uname -m).conf -Sy
+	left=$2
+	# Check if additional "other" package is specified
+	if [ -n "$3" ]; then
+		right="$3"
+		in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+		in_arch=$(/usr/bin/package-query -b ./pacman -S $right | head -n 1 | cut -f 2 -d " ")
+	else
+		# Check same package in repo and Arch
+		in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+		in_arch=$(/usr/bin/package-query -b ./pacman -S $left | head -n 1 | cut -f 2 -d " ")
+	fi
+	# Check if changed
+	if [ "$in_repo" == "$in_arch" ]; then
+		echo "$left: no change ($in_repo)"
+	else
+		echo -e "\033[1m $left: \033[0m $in_repo -> $in_arch ($right)"
+	fi
 	;;
 *)
 	# Check packages in package file for version changes between repo and AUR
@@ -103,11 +117,11 @@ EOF
 			if [ $(echo $p | wc -w) -eq 2 ]; then
 				# Check repo package (on left) against AUR package (on right)
 				right=$(echo $p | cut -f 2 -d " ")
-				in_repo=$(/usr/bin/pacman -Ss $left | head -n 1 | cut -f 2 -d " ")
+				in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
 				in_aur=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
 			else
 				# Check same package in repo and AUR
-				in_repo=$(/usr/bin/pacman -Ss $left | head -n 1 | cut -f 2 -d " ")
+				in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
 				in_aur=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
 			fi
 			
@@ -115,7 +129,7 @@ EOF
 			if [ "$in_repo" == "$in_aur" ]; then
 				echo "$left: no change ($in_repo)"
 			else
-				echo -e "\033[1m $left: \033[0m $in_repo -> $in_aur"
+				echo -e "\033[1m $left: \033[0m $in_repo -> $in_aur ($right)"
 			fi
 		
 			# Unset the left and right variables so that they can be used correctly in the next loop instance
@@ -142,11 +156,11 @@ EOF
 			if [ $(echo $p | wc -w) -eq 2 ]; then
 				# Check repo package (on left) against Arch package (on right)
 				right=$(echo $p | cut -f 2 -d " ")
-				in_repo=$(/usr/bin/pacman -Ss $left | head -n 1 | cut -f 2 -d " ")
+				in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
 				in_arch=$(/usr/bin/package-query -b ./pacman -S $right | head -n 1 | cut -f 2 -d " ")
 			else
 				# Check same package in repo and Arch
-				in_repo=$(/usr/bin/pacman -Ss $left | head -n 1 | cut -f 2 -d " ")
+				in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
 				in_arch=$(/usr/bin/package-query -b ./pacman -S $left | head -n 1 | cut -f 2 -d " ")
 			fi
 			
@@ -154,7 +168,7 @@ EOF
 			if [ "$in_repo" == "$in_arch" ]; then
 				echo "$left: no change ($in_repo)"
 			else
-				echo -e "\033[1m $left: \033[0m $in_repo -> $in_arch"
+				echo -e "\033[1m $left: \033[0m $in_repo -> $in_arch ($right)"
 			fi
 		
 			# Unset the left and right variables so that they can be used correctly in the next loop instance

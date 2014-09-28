@@ -18,19 +18,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
-# List of packages to check
-#list=('')
-
 # File from which to get list of packages
 pfile="./pkglist.txt"
 
-# Packages which are ignored even if there is change in versions
-ignore=('allservers' 'timeset' 'timeset-gui' 'fetter')
-
 # File from which to get list of ignored packages
-ifile="./iglist.txt"
+ifile="./ignlist.txt"
 
-# File from which to get Arch repo packages
+# File from which to get arch repo packages
 afile="./archlist.txt"
 
 case "$1" in
@@ -54,16 +48,14 @@ Examples:
 EOF
 	;;
 -i)
-	# Display ignored packages
-	echo -e "\033[1mIgnored: \033[0m"
-	for ((i=0;i<${#ignore[@]};i++)); do
-		echo ${ignore[$i]}
-	done
-	
-	# Ignored packages in file
+	# Display ignored packages from file
 	if [ -e $ifile ]; then
 		echo -e "\033[1mIgnored: \033[0m"
 		for i in $(cat $ifile); do
+			# Check for commented out line
+			if [ $(echo $i | cut -c 1) == "#" ]; then
+				continue  # skip this loop instance
+			fi
 			echo $i
 		done	
 	fi
@@ -71,17 +63,17 @@ EOF
 -c)
 	# Check specified packages only
 	for ((i=1;i<$#;i++)); do
-		in_repo=$(/usr/bin/pacman -Ss ${list[$i]} | head -n 1 | cut -f 2 -d " ")
-		in_aur=$(/usr/bin/package-query -A ${list[$i]} | head -n 1 | cut -f 2 -d " ")
+		in_repo=$(/usr/bin/pacman -Si $i} | grep Version | cut -f 2 -d ":" | cut -c 2-)
+		in_aur=$(/usr/bin/package-query -A $i | head -n 1 | cut -f 2 -d " ")
 		if [ "$in_repo" == "$in_aur" ]; then
-			echo "${list[$i]}: no change"
+			echo "$i: no change ($in_repo)"
 		else
-			echo -e "${list[$i]}: \033[1m $in_repo -> $in_aur \033[0m"
+			echo -e "\033[1m $i: \033[0m $in_repo -> $in_aur"
 		fi
 	done
 	;;
 -a)
-	# First sync Arch repo to pacman folder in current directory
+	# First sync arch repo to pacman folder in current directory
 	sudo pacman -b ./pacman --config ./pacman/pacman-$(uname -m).conf -Sy
 	left=$2
 	# Check if additional "other" package is specified
@@ -137,7 +129,7 @@ EOF
 		done < $pfile
 	fi
 	
-	# Check for package from file in Manjaro repo against Arch repo package
+	# Check for package from file in manjaro repo against arch repo package
 	if [ -e $afile ]; then
 		# First sync Arch repo to pacman folder in current directory
 		sudo pacman -b ./pacman --config ./pacman/pacman-$(uname -m).conf -Sy

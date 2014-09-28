@@ -3,6 +3,6 @@ thermald
 yaourt
 downgrade
 pekwm-menu
-wallpaperd
+#wallpaperd
 i-nex	i-nex-git
 #eudev-systemdcompat libsystemd

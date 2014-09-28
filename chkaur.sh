@@ -19,21 +19,39 @@
 ##
 
 # List of packages to check
-list=('qbittorrent' 'i-nex' 'yaourt' 'pekwm-menu' 'wallpaperd' 'thermald' 'downgrade')
+#list=('')
 
 # File from which to get list of packages
-pfile="./packagelist.txt"
+pfile="./pkglist.txt"
 
 # Packages which are ignored even if there is change in versions
 ignore=('allservers' 'timeset' 'timeset-gui' 'fetter')
 
 # File from which to get list of ignored packages
-ifile="./ignoredlist.txt"
+ifile="./iglist.txt"
 
+# File from which to get Arch repo packages
+afile="./archlist.txt"
 
 case "$1" in
--h) echo "Usage: 
-	chkaur [-c,-i,-h]"
+-h) 	
+	cat << EOF
+Usage:	chkaur [option] 
+
+	chkaur -f  : Default option; takes packages to check from file(s)
+	chkaur -o <repo_pkg_name> <aur_pkg_name>  : Check diff pkgname from AUR
+	chkaur -a <repo_pkg_name> <arch_pkg_name>  : Check from Arch repo 
+	chkaur -c <pkg1> <pkg2> ..  : Check specified packages for updates
+	chkaur -i  : Display ignored packages
+	chkaur -h  : Display help
+
+Examples:
+	
+	chkaur -o i-nex i-nex-git
+	chkaur -a eudev-systemdcompat systemd
+	chkaur -c yaourt downgrade 
+
+EOF
 	;;
 -i)
 	# Display ignored packages
@@ -64,40 +82,84 @@ case "$1" in
 	;;
 -a)
 	# Check for package in Manjaro repo against Arch repo package
-
+	# Sync Arch repo to pacman folder in current directory
+	sudo pacman -b ./pacman --config ./pacman-$(uname -m).conf -Sy
+	
+	#pacman --config ./pacman-i686.conf -Ss mousepad
+	;;
 *)
-	# Check packages in list for version changes between repo and AUR
-	for ((i=0;i<${#list[@]};i++)); do
-		in_repo=$(/usr/bin/pacman -Ss ${list[$i]} | head -n 1 | cut -f 2 -d " ")
-		in_aur=$(/usr/bin/package-query -A ${list[$i]} | head -n 1 | cut -f 2 -d " ")
-		if [ "$in_repo" == "$in_aur" ]; then
-			echo "${list[$i]}: no change"
-		else
-			echo -e "${list[$i]}: \033[1m $in_repo -> $in_aur \033[0m"
-		fi
-	done
-	# Check packages in package file
+	# Check packages in package file for version changes between repo and AUR
 	if [ -e $pfile ]; then
-		for i in $(cat $pfile); do
+		while read p; do
+			# Get first (or only) package in current line
+			left=$(echo $p | cut -f 1 -d " ")
+			
+			# Check for commented out line
+			if [ $(echo $left | cut -c 1) == "#" ]; then
+				continue  # skip this loop instance
+			fi
+			
 			# Check if additional "other" package is specified
-			if [ $(echo $i) -eq 1 ]; then
+			if [ $(echo $p | wc -w) -eq 2 ]; then
 				# Check repo package (on left) against AUR package (on right)
-				# The packages are assumed to be tab separated
-				left=$(echo $i | cut -f 1)
-				right=$(echo $i | cut -f 2)
+				right=$(echo $p | cut -f 2 -d " ")
 				in_repo=$(/usr/bin/pacman -Ss $left | head -n 1 | cut -f 2 -d " ")
 				in_aur=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
 			else
+				# Check same package in repo and AUR
 				in_repo=$(/usr/bin/pacman -Ss $left | head -n 1 | cut -f 2 -d " ")
-				in_aur=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
+				in_aur=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
 			fi
+			
 			# Check if changed
 			if [ "$in_repo" == "$in_aur" ]; then
-				echo "$i: no change"
+				echo "$left: no change ($in_repo)"
 			else
-				echo -e "$i: \033[1m $in_repo -> $in_aur \033[0m"
+				echo -e "\033[1m $left: \033[0m $in_repo -> $in_aur"
 			fi
-		done
+		
+			# Unset the left and right variables so that they can be used correctly in the next loop instance
+			unset left right
+		done < $pfile
+	fi
+	
+	# Check for package from file in Manjaro repo against Arch repo package
+	if [ -e $afile ]; then
+		# First sync Arch repo to pacman folder in current directory
+		sudo pacman -b ./pacman --config ./pacman/pacman-$(uname -m).conf -Sy
+	
+		# Now query arch package from this repo	
+		while read p; do
+			# Get first (or only) package in current line
+			left=$(echo $p | cut -f 1 -d " ")
+			
+			# Check for commented out line
+			if [ $(echo $left | cut -c 1) == "#" ]; then
+				continue  # skip this loop instance
+			fi
+			
+			# Check if additional "other" package is specified
+			if [ $(echo $p | wc -w) -eq 2 ]; then
+				# Check repo package (on left) against Arch package (on right)
+				right=$(echo $p | cut -f 2 -d " ")
+				in_repo=$(/usr/bin/pacman -Ss $left | head -n 1 | cut -f 2 -d " ")
+				in_arch=$(/usr/bin/package-query -b ./pacman -S $right | head -n 1 | cut -f 2 -d " ")
+			else
+				# Check same package in repo and Arch
+				in_repo=$(/usr/bin/pacman -Ss $left | head -n 1 | cut -f 2 -d " ")
+				in_arch=$(/usr/bin/package-query -b ./pacman -S $left | head -n 1 | cut -f 2 -d " ")
+			fi
+			
+			# Check if changed
+			if [ "$in_repo" == "$in_arch" ]; then
+				echo "$left: no change ($in_repo)"
+			else
+				echo -e "\033[1m $left: \033[0m $in_repo -> $in_arch"
+			fi
+		
+			# Unset the left and right variables so that they can be used correctly in the next loop instance
+			unset left right
+		done < $afile
 	fi
 	;;
 esac

@@ -19,13 +19,13 @@
 ##
 
 # File from which to get list of packages
-pfile="./pkglist.txt"
+pfile="./lists/pkglist.txt"
 
 # File from which to get list of ignored packages
-ifile="./ignlist.txt"
+ifile="./lists/ignlist.txt"
 
 # File from which to get arch repo packages
-afile="./archlist.txt"
+afile="./lists/archlist.txt"
 
 case "$1" in
 -h) 	

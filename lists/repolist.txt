@@ -1,3 +1,1 @@
 eudev-systemdcompat	systemd
-systemd	libsystemd
-openrc-core

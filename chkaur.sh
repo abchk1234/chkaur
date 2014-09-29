@@ -22,7 +22,7 @@
 pfile="./lists/pkglist.txt"
 
 # File from which to get repo packages
-afile="./lists/repolist.txt"
+rfile="./lists/repolist.txt"
 
 # File from which to get arch repo packages
 afile="./lists/archlist.txt"
@@ -151,12 +151,17 @@ EOF
 -r)
 	if [ -n "$2" ]; then
 		left="$2"
-		right="$3"
+		# Check if other package is specified
+		if [ -n "$3" ]; then
+			right="$3"
+		else
+			echo "second package not specified" && exit 1	
+		fi
 		in_repo_p1=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
 		in_repo_p2=$(/usr/bin/pacman -Si $right | grep Version | cut -f 2 -d ":" | cut -c 2-)
 		# Check if changed
 		if [ "$in_repo_p1" == "$in_repo_p2" ]; then
-			echo "$left: no change ($in_repo_p1)"
+			echo "$left, $right: no change ($in_repo_p1)"
 		else
 			echo -e "\033[1m $left: \033[0m $in_repo_p1 -> $in_repo_p2 ($right)"
 		fi
@@ -172,12 +177,16 @@ EOF
 				fi
 				# Get second package in current line
 				right=$(echo $p | cut -f 2 -d " ")
+				# Check if second package specified
+				if [ "$left" == "$right" ]; then
+					echo "$left: second package not specified" && continue
+				fi		
 				# Check repo package (on left) against repo package (on right)
 				in_repo_p1=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
 				in_repo_p2=$(/usr/bin/pacman -Si $right | grep Version | cut -f 2 -d ":" | cut -c 2-)
 				# Check if changed
 				if [ "$in_repo_p1" == "$in_repo_p2" ]; then
-					echo "$left: no change ($in_repo_p1)"
+					echo "$left, $right: no change ($in_repo_p1)"
 				else
 					echo -e "\033[1m $left: \033[0m $in_repo_p1 -> $in_repo_p2 ($right)"
 				fi

@@ -62,9 +62,11 @@ EOF
 	;;
 -c)
 	# Check specified packages only
-	for ((i=1;i<$#;i++)); do
-		in_repo=$(/usr/bin/pacman -Si $i} | grep Version | cut -f 2 -d ":" | cut -c 2-)
-		in_aur=$(/usr/bin/package-query -A $i | head -n 1 | cut -f 2 -d " ")
+	for i in "$@"; do
+		if [ ! "$i" == '-c' ]; then
+			in_repo=$(/usr/bin/pacman -Si $i} | grep Version | cut -f 2 -d ":" | cut -c 2-)
+			in_aur=$(/usr/bin/package-query -A $i | head -n 1 | cut -f 2 -d " ")
+		fi
 		if [ "$in_repo" == "$in_aur" ]; then
 			echo "$i: no change ($in_repo)"
 		else

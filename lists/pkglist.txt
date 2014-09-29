@@ -1,0 +1,8 @@
+thermald
+#qbittorent
+yaourt
+downgrade
+pekwm-menu
+#wallpaperd
+i-nex	i-nex-git
+#eudev-systemdcompat libsystemd

@@ -1,8 +1,9 @@
 Check repo packages for updates against packages in the AUR.
 
-## Dependencies
+## Requires
 
-package-query
+* package-query
+* Internet connection for checking AUR packages
 
 ## Files used
 

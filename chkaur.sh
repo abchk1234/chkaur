@@ -21,11 +21,14 @@
 # File from which to get list of packages
 pfile="./lists/pkglist.txt"
 
-# File from which to get list of ignored packages
-ifile="./lists/ignlist.txt"
+# File from which to get repo packages
+afile="./lists/repolist.txt"
 
 # File from which to get arch repo packages
 afile="./lists/archlist.txt"
+
+# File from which to get list of ignored packages
+ifile="./lists/ignlist.txt"
 
 case "$1" in
 -h) 	
@@ -33,8 +36,8 @@ case "$1" in
 Usage:	chkaur [option] 
 
 	chkaur -f [<repo_pkg_name> <aur_pkg_name>]  : Check repo package against AUR
+	chkaur -r [<repo_pkg_1> <repo_pkg_2>]  : Check one repo package against another
 	chkaur -a [<repo_pkg_name>] [<arch_pkg_name>]  : Check from Arch repo 
-	chkaur -r <repo_pkg_1> <repo_pkg_2>  : Check one repo package against another
 	chkaur -c <pkg1> <pkg2> ..  : Check specified packages for updates
 	chkaur -i  : Display ignored packages
 	chkaur -h  : Display help
@@ -45,10 +48,11 @@ Examples:
 	chkaur -f  # Will take packages to check (repo to AUR) from pkglist file
 	chkaur -f octopi  # Compare version of package octopi in repo and AUR
 	chkaur -f i-nex i-nex-git  # Compare i-nex from repo to i-nex-git in AUR
+	chkaur -r  # Take repo packages to check against each other from file 
+	chkaur -r eudev-systemdcompat systemd  # Compare eudev-systemdcompat to systemd (both in repo)
 	chkaur -a  # Will take packages to check (repo to Arch repo) from archlist file
 	chkaur -a xorg-server  # Check xorg-server version in repo to Arch repo
 	chkaur -a eudev-systemdcompat systemd  # Compare eudev-systemdcompat in repo to systemd in Arch repo
-	chkaur -r eudev-systemdcompat systemd  # Compare eudev-systemdcompat to systemd (both in repo)
 	chkaur -c yaourt downgrade  # Check yaourt and downgrade repo packages to those in AUR
 
 EOF
@@ -65,7 +69,7 @@ EOF
 			echo $i
 		done	
 	else
-		echo "Could not file ignored file" && exit 1
+		echo "Could not find ignored file" && exit 1
 	fi
 	;;
 -c)
@@ -75,11 +79,9 @@ EOF
 		if [ "$i" == "-c" ]; then
 			continue
 		fi
-		
 		# Check package version in repo and AUR
 		in_repo=$(/usr/bin/pacman -Si $i | grep Version | cut -f 2 -d ":" | cut -c 2-)
 		in_aur=$(/usr/bin/package-query -A $i | head -n 1 | cut -f 2 -d " ")
-		
 		# Check if changed
 		if [ "$in_repo" == "$in_aur" ]; then
 			echo "$i: no change ($in_repo)"
@@ -142,20 +144,49 @@ EOF
 				unset left right
 			done < $afile
 		else
-			echo "Could not file package file" && exit 1
+			echo "Could not find package file" && exit 1
 		fi
 	fi
 	;;
 -r)
-	left="$2"
-	right="$3"
-	in_repo_p1=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
-	in_repo_p2=$(/usr/bin/pacman -Si $right | grep Version | cut -f 2 -d ":" | cut -c 2-)
-	# Check if changed
-	if [ "$in_repo_p1" == "$in_repo_p2" ]; then
-		echo "$left: no change ($in_repo_p1)"
+	if [ -n "$2" ]; then
+		left="$2"
+		right="$3"
+		in_repo_p1=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+		in_repo_p2=$(/usr/bin/pacman -Si $right | grep Version | cut -f 2 -d ":" | cut -c 2-)
+		# Check if changed
+		if [ "$in_repo_p1" == "$in_repo_p2" ]; then
+			echo "$left: no change ($in_repo_p1)"
+		else
+			echo -e "\033[1m $left: \033[0m $in_repo_p1 -> $in_repo_p2 ($right)"
+		fi
 	else
-		echo -e "\033[1m $left: \033[0m $in_repo_p1 -> $in_repo_p2 ($right)"
+		# Check packages in package file for version changes
+		if [ -e $rfile ]; then
+			while read p; do
+				# Get first package in current line
+				left=$(echo $p | cut -f 1 -d " ")
+				# Check for commented out line
+				if [ $(echo $left | cut -c 1) == "#" ]; then
+					continue  # skip this loop instance
+				fi
+				# Get second package in current line
+				right=$(echo $p | cut -f 2 -d " ")
+				# Check repo package (on left) against repo package (on right)
+				in_repo_p1=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+				in_repo_p2=$(/usr/bin/pacman -Si $right | grep Version | cut -f 2 -d ":" | cut -c 2-)
+				# Check if changed
+				if [ "$in_repo_p1" == "$in_repo_p2" ]; then
+					echo "$left: no change ($in_repo_p1)"
+				else
+					echo -e "\033[1m $left: \033[0m $in_repo_p1 -> $in_repo_p2 ($right)"
+				fi
+				# Unset the left and right variables so that they can be used correctly in the next loop instance
+				unset left right
+			done < $rfile
+		else
+			echo "Could not find package file" && exit 1
+		fi
 	fi
 	;;
 *)
@@ -209,7 +240,7 @@ EOF
 				unset left right
 			done < $pfile
 		else
-			echo "Could not file package file" && exit 1
+			echo "Could not find package file" && exit 1
 		fi
 	fi
 	;;

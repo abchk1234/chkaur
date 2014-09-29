@@ -93,6 +93,18 @@ EOF
 		echo -e "\033[1m $left: \033[0m $in_repo -> $in_arch ($right)"
 	fi
 	;;
+-o)
+	left="$2"
+	right="$3"
+	in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+	in_aur=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
+	# Check if changed
+	if [ "$in_repo" == "$in_aur" ]; then
+		echo "$left: no change ($in_repo)"
+	else
+		echo -e "\033[1m $left: \033[0m $in_repo -> $in_aur ($right)"
+	fi
+	;;
 *)
 	# Check packages in package file for version changes between repo and AUR
 	if [ -e $pfile ]; then

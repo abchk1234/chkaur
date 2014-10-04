@@ -24,8 +24,14 @@ pfile="./lists/pkglist.txt"
 # File from which to get repo packages
 rfile="./lists/repolist.txt"
 
+# File from which to get installed repo packages
+ufile="./lists/instlist.txt"
+
 # File from which to get arch repo packages
 afile="./lists/archlist.txt"
+
+# File from which to get aur packages
+ofile="./lists/aurlist.txt"
 
 # File from which to get list of ignored packages
 ifile="./lists/ignlist.txt"
@@ -50,7 +56,9 @@ Usage:	chkaur [option]
 	chkaur -f [<repo_pkg_name> <aur_pkg_name>]  : Check repo package against AUR
 	chkaur -r [<repo_pkg_1> <repo_pkg_2>]  : Check one repo package against another
 	chkaur -a [<repo_pkg_name>] [<arch_pkg_name>]  : Check from Arch repo 
+	chkaur -o [<aur_pkg_1> <aur_pkg_2>]  : Check one AUR package against another
 	chkaur -c <pkg1> <pkg2> ..  : Check specified packages for updates
+	chkaur -u <pkg1> <pkg2> ..  : Check specified installed packages for updates
 	chkaur -i  : Display ignored packages
 	chkaur -h  : Display help
 
@@ -65,7 +73,11 @@ Examples:
 	chkaur -a  # Will take packages to check (repo to Arch repo) from archlist file
 	chkaur -a xorg-server  # Check xorg-server version in repo to Arch repo
 	chkaur -a eudev-systemdcompat systemd  # Compare eudev-systemdcompat in repo to systemd in Arch repo
-	chkaur -c yaourt downgrade  # Check yaourt and downgrade repo packages to those in AUR
+	chkaur -o  # Will take packages to check (AUR to AUR) from aurlist file
+	chkaur -o nbwmon nbwmon-git  # Compare nbwmon in AUR to nbwmon-git which is also in AUR
+	chkaur -u  # Will take packages to check (installed to AUR) from instlist file
+	chkaur -u gpaint qbittorent  # Check specified installed packages to those in AUR
+	chkaur -c yaourt downgrade  # Check specified repo packages to those in AUR
 
 EOF
 	;;
@@ -105,9 +117,65 @@ EOF
 		fi
 	done
 	;;
+-u)
+	# Check if installed package is specified
+	check_dep
+	check_net
+	if [ -n "$2" ]; then
+		# Parse command line arguments
+		for i in "$@"; do
+			# Skip -u option
+			if [ "$i" == "-u" ]; then
+				continue
+			fi
+			# Check package version installed and in AUR
+			installed=$(/usr/bin/pacman -Qi $i | grep Version | cut -f 2 -d ":" | cut -c 2-)
+			in_aur=$(/usr/bin/package-query -A $i | head -n 1 | cut -f 2 -d " ")
+			# Check if changed
+			if [ "$installed" == "$in_aur" ]; then
+				echo "$i: no change ($installed)"
+			else
+				echo -e "\033[1m $i: \033[0m $installed -> $in_aur"
+			fi
+		done
+	else
+		# Check packages in package file for version changes between repo and AUR
+		if [ -e $ufile ]; then
+			while read p; do
+				# Get first (or only) package in current line
+				left=$(echo $p | cut -f 1 -d " ")
+				# Check for commented out line
+				if [ $(echo $left | cut -c 1) == "#" ]; then
+					continue  # skip this loop instance
+				fi
+				# Check if additional "other" package is specified
+				if [ $(echo $p | wc -w) -eq 2 ]; then
+					# Check repo package (on left) against AUR package (on right)
+					right=$(echo $p | cut -f 2 -d " ")
+					installed=$(/usr/bin/pacman -Qi $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+					in_aur=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
+				else
+					# Check same package in repo and AUR
+					installed=$(/usr/bin/pacman -Qi $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+					in_aur=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
+				fi
+				# Check if changed
+					if [ "$installed" == "$in_aur" ]; then
+					echo "$left: no change ($installed)"
+				else
+					echo -e "\033[1m $left: \033[0m $installed -> $in_aur ($right)"
+				fi
+				# Unset the left and right variables so that they can be used correctly in the next loop instance
+				unset left right
+			done < $ufile
+		else
+			echo "Could not find package file" && exit 1
+		fi
+	fi
+	;;
 -a)
 	# First sync arch repo to pacman folder in current directory
-	sudo pacman -b ./pacman --config ./pacman/pacman-$(uname -m).conf -Sy
+	sudo pacman -b ./pacman --config ./pacman/pacman-$(uname -m).conf -Sy || exit 1
 	# Check if package is specified
 	if [ -n "$2" ]; then
 		left=$2
@@ -164,7 +232,7 @@ EOF
 	fi
 	;;
 -r)
-	# Check package in repo againtst another package in the repo
+	# Check package in repo against another package in the repo
 	if [ -n "$2" ]; then
 		left="$2"
 		# Check if other package is specified
@@ -173,8 +241,8 @@ EOF
 		else
 			echo "second package not specified" && exit 1	
 		fi
-		in_repo_p1=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
-		in_repo_p2=$(/usr/bin/pacman -Si $right | grep Version | cut -f 2 -d ":" | cut -c 2-)
+		in_repo_p1=$(/usr/bin/pacman -Si $left | grep Version | head -n 1 | cut -f 2 -d ":" | cut -c 2-)
+		in_repo_p2=$(/usr/bin/pacman -Si $right | grep Version | head -n 1 | cut -f 2 -d ":" | cut -c 2-)
 		# Check if changed
 		if [ "$in_repo_p1" == "$in_repo_p2" ]; then
 			echo "$left, $right: no change ($in_repo_p1)"
@@ -198,8 +266,8 @@ EOF
 					echo "$left: second package not specified" && continue
 				fi		
 				# Check repo package (on left) against repo package (on right)
-				in_repo_p1=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
-				in_repo_p2=$(/usr/bin/pacman -Si $right | grep Version | cut -f 2 -d ":" | cut -c 2-)
+				in_repo_p1=$(/usr/bin/pacman -Si $left | grep Version | head -n 1 | cut -f 2 -d ":" | cut -c 2-)
+				in_repo_p2=$(/usr/bin/pacman -Si $right | grep Version | head -n 1 | cut -f 2 -d ":" | cut -c 2-)
 				# Check if changed
 				if [ "$in_repo_p1" == "$in_repo_p2" ]; then
 					echo "$left, $right: no change ($in_repo_p1)"
@@ -209,6 +277,57 @@ EOF
 				# Unset the left and right variables so that they can be used correctly in the next loop instance
 				unset left right
 			done < $rfile
+		else
+			echo "Could not find package file" && exit 1
+		fi
+	fi
+	;;
+-o)
+	# Check package in AUR against another package in the AUR
+	if [ -n "$2" ]; then
+		left="$2"
+		# Check if other package is specified
+		if [ -n "$3" ]; then
+			right="$3"
+		else
+			echo "second package not specified" && exit 1
+		fi
+		in_aur_p1=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
+		in_aur_p2=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
+		# Check if changed
+		if [ "$in_aur_p1" == "$in_aur_p2" ]; then
+			echo "$left, $right: no change ($in_aur_p1)"
+		else
+			echo -e "\033[1m $left: \033[0m $in_aur_p1 -> $in_aur_p2 ($right)"
+		fi
+	else
+		# Check packages in package file for version changes
+		if [ -e $ofile ]; then
+			while read p; do
+				# Get first package in current line
+				left=$(echo $p | cut -f 1 -d " ")
+				# Check for commented out line
+				if [ $(echo $left | cut -c 1) == "#" ]; then
+					continue  # skip this loop instance
+				fi
+				# Get second package in current line
+				right=$(echo $p | cut -f 2 -d " ")
+				# Check if second package specified
+				if [ "$left" == "$right" ]; then
+					echo "$left: second package not specified" && continue
+				fi
+				# Check aur package (on left) against another aur package (on right)
+				in_aur_p1=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
+				in_aur_p2=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
+				# Check if changed
+				if [ "$in_aur_p1" == "$in_aur_p2" ]; then
+					echo "$left, $right: no change ($in_aur_p1)"
+				else
+					echo -e "\033[1m $left: \033[0m $in_aur_p1 -> $in_aur_p2 ($right)"
+				fi
+				# Unset the left and right variables so that they can be used correctly in the next loop instance
+				unset left right
+			done < $ofile
 		else
 			echo "Could not find package file" && exit 1
 		fi

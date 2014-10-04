@@ -30,6 +30,18 @@ afile="./lists/archlist.txt"
 # File from which to get list of ignored packages
 ifile="./lists/ignlist.txt"
 
+# Function to check if dependencies are installed
+check_dep () {
+	if [ ! -e /usr/bin/package-query ]; then 
+		echo "package-query not available. Please install it to run this application" && exit 1
+	fi
+}
+check_net () {
+	if [ ! "$(ping -c 1 google.com)" ]; then
+		echo "Internet connection not available. Internet access is required to check the AUR" && exit 1
+	fi
+}
+
 case "$1" in
 -h) 	
 	cat << EOF
@@ -74,6 +86,9 @@ EOF
 	;;
 -c)
 	# Check specified packages only
+	check_dep
+	check_net
+	# Parse command line arguments
 	for i in "$@"; do
 		# Skip -c option
 		if [ "$i" == "-c" ]; then
@@ -149,6 +164,7 @@ EOF
 	fi
 	;;
 -r)
+	# Check package in repo againtst another package in the repo
 	if [ -n "$2" ]; then
 		left="$2"
 		# Check if other package is specified
@@ -199,6 +215,9 @@ EOF
 	fi
 	;;
 *)
+	# Check packages from file for updates from the AUR
+	check_dep
+	check_net
 	# Check if package is specified
 	if [ -n "$2" ]; then
 		left="$2"

@@ -53,7 +53,6 @@ case "$1" in
 	cat << EOF
 Usage:	chkaur [option] 
 
-<<<<<<< HEAD
 chkaur -f [<repo_pkgname> <aur_pkgname>]  : Check repo package against AUR
 chkaur -r [<repo_pkg1> <repo_pkg2>]  : Check one repo package against another
 chkaur -a [<repo_pkg_name>] [<arch_pkg_name>]  : Check from Arch repo 
@@ -73,33 +72,6 @@ chkaur -a  # Will take packages to check (repo to Arch repo) from archlist file
 chkaur -a xorg-server  # Check xorg-server version in repo to Arch repo
 chkaur -a eudev-systemdcompat systemd  # Compare pkg1 in repo to pkg2 in Arch
 chkaur -c yaourt downgrade  # Check repo packages to those in AUR
-=======
-	chkaur -f [<repo_pkg_name> <aur_pkg_name>]  : Check repo package against AUR
-	chkaur -r [<repo_pkg_1> <repo_pkg_2>]  : Check one repo package against another
-	chkaur -a [<repo_pkg_name>] [<arch_pkg_name>]  : Check from Arch repo 
-	chkaur -o [<aur_pkg_1> <aur_pkg_2>]  : Check one AUR package against another
-	chkaur -c <pkg1> <pkg2> ..  : Check specified packages for updates
-	chkaur -u <pkg1> <pkg2> ..  : Check specified installed packages for updates
-	chkaur -i  : Display ignored packages
-	chkaur -h  : Display help
-
-Examples:
-	
-	chkaur	# Equivalent to chkaur -f
-	chkaur -f  # Will take packages to check (repo to AUR) from pkglist file
-	chkaur -f octopi  # Compare version of package octopi in repo and AUR
-	chkaur -f i-nex i-nex-git  # Compare i-nex from repo to i-nex-git in AUR
-	chkaur -r  # Take repo packages to check against each other from file 
-	chkaur -r eudev-systemdcompat systemd  # Compare eudev-systemdcompat to systemd (both in repo)
-	chkaur -a  # Will take packages to check (repo to Arch repo) from archlist file
-	chkaur -a xorg-server  # Check xorg-server version in repo to Arch repo
-	chkaur -a eudev-systemdcompat systemd  # Compare eudev-systemdcompat in repo to systemd in Arch repo
-	chkaur -o  # Will take packages to check (AUR to AUR) from aurlist file
-	chkaur -o nbwmon nbwmon-git  # Compare nbwmon in AUR to nbwmon-git which is also in AUR
-	chkaur -c yaourt downgrade  # Check specified repo packages to those in AUR
-	chkaur -u  # Will take packages to check (installed to AUR) from instlist file
-	chkaur -u gpaint qbittorent  # Check specified installed packages to those in AUR
->>>>>>> 79122b11cb119fe9a6c8492f81624e7ff14a7b08
 
 EOF
 	;;
@@ -141,22 +113,18 @@ EOF
 	;;
 -a)
 	# First sync arch repo to pacman folder in current directory
-<<<<<<< HEAD
 	fakeroot pacman -b ./pacman --config ./pacman/pacman-$(uname -m).conf -Sy
-=======
-	sudo pacman -b ./pacman --config ./pacman/pacman-$(uname -m).conf -Sy || exit 1
->>>>>>> 79122b11cb119fe9a6c8492f81624e7ff14a7b08
 	# Check if package is specified
 	if [ -n "$2" ]; then
 		left=$2
 		# Check if additional "other" package is specified
 		if [ -n "$3" ]; then
 			right="$3"
-			in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+			in_repo=$(/usr/bin/pacman -Si $left | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
 			in_arch=$(/usr/bin/package-query -b ./pacman -S $right | head -n 1 | cut -f 2 -d " ")
 		else
 			# Check same package in repo and Arch
-			in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+			in_repo=$(/usr/bin/pacman -Si $left | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
 			in_arch=$(/usr/bin/package-query -b ./pacman -S $left | head -n 1 | cut -f 2 -d " ")
 		fi
 		# Check if changed
@@ -180,11 +148,11 @@ EOF
 				if [ $(echo $p | wc -w) -eq 2 ]; then
 					# Check repo package (on left) against Arch package (on right)
 					right=$(echo $p | cut -f 2 -d " ")
-					in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+					in_repo=$(/usr/bin/pacman -Si $left | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
 					in_arch=$(/usr/bin/package-query -b ./pacman -S $right | head -n 1 | cut -f 2 -d " ")
 				else
 					# Check same package in repo and Arch
-					in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+					in_repo=$(/usr/bin/pacman -Si $left | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
 					in_arch=$(/usr/bin/package-query -b ./pacman -S $left | head -n 1 | cut -f 2 -d " ")
 				fi
 				# Check if changed

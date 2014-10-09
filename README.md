@@ -21,6 +21,12 @@ The above format can be used.
 
 -------------------------------------------------------------------------------
 
+instlist.txt: Contains list of installed packages to be checked for updates from Arch repo
+
+Like before, a single line can contain one or two packages, with same syntax.
+
+-------------------------------------------------------------------------------
+
 repolist.txt: Contains list of packages to be checked for updates against each other from repo
 
 A single line contains two packages, which have to be checked against each other, and both are in repo.
@@ -28,6 +34,12 @@ A single line contains two packages, which have to be checked against each other
 -------------------------------------------------------------------------------
 
 archlist.txt: Contains list of packages to be checked for updates from Arch repo
+
+Like before, a single line can contain one or two packages, with same syntax.
+
+-------------------------------------------------------------------------------
+
+aurlist.txt: Contains list of AUR packages to be checked for updates from AUR
 
 Like before, a single line can contain one or two packages, with same syntax.
 

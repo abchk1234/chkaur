@@ -3,9 +3,10 @@ thermald
 yaourt
 downgrade
 laptop-mode-tools
-timeset
+#timeset
 timeset-gui
 allservers
 #pekwm-menu
 #wallpaperd
+#i-nex	i-nex-git
 #eudev-systemdcompat libsystemd

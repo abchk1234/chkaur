@@ -1,4 +1,4 @@
 #allservers
-#timeset
+timeset
 #timeset-gui
 fetter

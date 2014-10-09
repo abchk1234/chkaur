@@ -35,25 +35,25 @@ case "$1" in
 	cat << EOF
 Usage:	chkaur [option] 
 
-	chkaur -f [<repo_pkg_name> <aur_pkg_name>]  : Check repo package against AUR
-	chkaur -r [<repo_pkg_1> <repo_pkg_2>]  : Check one repo package against another
-	chkaur -a [<repo_pkg_name>] [<arch_pkg_name>]  : Check from Arch repo 
-	chkaur -c <pkg1> <pkg2> ..  : Check specified packages for updates
-	chkaur -i  : Display ignored packages
-	chkaur -h  : Display help
+chkaur -f [<repo_pkgname> <aur_pkgname>]  : Check repo package against AUR
+chkaur -r [<repo_pkg1> <repo_pkg2>]  : Check one repo package against another
+chkaur -a [<repo_pkg_name>] [<arch_pkg_name>]  : Check from Arch repo 
+chkaur -c <pkg1> <pkg2> ..  : Check specified packages for updates
+chkaur -i  : Display ignored packages
+chkaur -h  : Display help
 
 Examples:
 	
-	chkaur	# Equivalent to chkaur -f
-	chkaur -f  # Will take packages to check (repo to AUR) from pkglist file
-	chkaur -f octopi  # Compare version of package octopi in repo and AUR
-	chkaur -f i-nex i-nex-git  # Compare i-nex from repo to i-nex-git in AUR
-	chkaur -r  # Take repo packages to check against each other from file 
-	chkaur -r eudev-systemdcompat systemd  # Compare eudev-systemdcompat to systemd (both in repo)
-	chkaur -a  # Will take packages to check (repo to Arch repo) from archlist file
-	chkaur -a xorg-server  # Check xorg-server version in repo to Arch repo
-	chkaur -a eudev-systemdcompat systemd  # Compare eudev-systemdcompat in repo to systemd in Arch repo
-	chkaur -c yaourt downgrade  # Check yaourt and downgrade repo packages to those in AUR
+chkaur	# Equivalent to chkaur -f
+chkaur -f  # Will take packages to check (repo to AUR) from pkglist file
+chkaur -f octopi  # Compare version of package octopi in repo and AUR
+chkaur -f i-nex i-nex-git  # Compare i-nex from repo to i-nex-git in AUR
+chkaur -r  # Take repo packages to check against each other from file 
+chkaur -r eudev-systemdcompat systemd  # Compare both repo packages
+chkaur -a  # Will take packages to check (repo to Arch repo) from archlist file
+chkaur -a xorg-server  # Check xorg-server version in repo to Arch repo
+chkaur -a eudev-systemdcompat systemd  # Compare pkg1 in repo to pkg2 in Arch
+chkaur -c yaourt downgrade  # Check repo packages to those in AUR
 
 EOF
 	;;
@@ -92,7 +92,7 @@ EOF
 	;;
 -a)
 	# First sync arch repo to pacman folder in current directory
-	sudo pacman -b ./pacman --config ./pacman/pacman-$(uname -m).conf -Sy
+	fakeroot pacman -b ./pacman --config ./pacman/pacman-$(uname -m).conf -Sy
 	# Check if package is specified
 	if [ -n "$2" ]; then
 		left=$2

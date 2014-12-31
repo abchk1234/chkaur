@@ -71,9 +71,52 @@ edit-file () {
 	fi
 }
 
-check-update () {
-	# To be done
+check-pkg-file () {
+	file="$1" # file from which to read packages specified as first argument
+	if [ ! -e "$file" ]; then
+		echo "Could not find package file $file" && exit 1
+	fi
+}
+
+get-arch-package () {
+	# TBD
 	echo
+}
+
+check-update () {
+	file="$1" # file from which to read packages specified as first argument
+	progl="$2" # program to use for left package
+	progr="$3" # program to use for right package
+	# Check packages in package file for version changes
+	if [ -e $file ]; then
+		while read p; do
+			# Get first package in current line
+			left=$(echo $p | cut -f 1 -d " ")
+			# Check for commented out line
+			if [ $(echo $left | cut -c 1) == "#" ]; then
+				continue  # skip this loop instance
+			fi
+			# Get second package in current line
+			right=$(echo $p | cut -f 2 -d " ")
+			# Check if second package specified
+			if [ "$left" == "$right" ]; then
+				echo "$left: second package not specified" && continue
+			fi
+			# Check package on left against package on right
+			pkg1=$($progl -A $left | head -n 1 | cut -f 2 -d " ")
+			pkg2=$($progr -A $right | head -n 1 | cut -f 2 -d " ")
+			# Check if changed
+			if [ "$pkg1" == "$pkg2" ]; then
+				echo "$left, $right: no change ($pkg1)"
+			else
+				echo -e "\033[1m $left: \033[0m $pkg1 -> $pkg2 ($right)"
+			fi
+			# Unset the left and right variables so that they can be used correctly in the next loop instance
+			unset left right
+		done < $file
+	else
+		echo "Could not find package file $file" && exit 1
+	fi
 }
 
 case "$1" in
@@ -180,39 +223,35 @@ EOF
 			echo -e "\033[1m $left: \033[0m $in_repo -> $in_arch ($right)"
 		fi
 	else
-		# Check for package from file in manjaro repo against arch repo package
-		if [ -e $afile ]; then
-			# Now query arch package from this repo	
-			while read p; do
-				# Get first (or only) package in current line
-				left=$(echo $p | cut -f 1 -d " ")
-				# Check for commented out line
-				if [ $(echo $left | cut -c 1) == "#" ]; then
-					continue  # skip this loop instance
-				fi
-				# Check if additional "other" package is specified
-				if [ $(echo $p | wc -w) -eq 2 ]; then
-					# Check repo package (on left) against Arch package (on right)
-					right=$(echo $p | cut -f 2 -d " ")
-					in_repo=$(/usr/bin/pacman -Si $left | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
-					in_arch=$(/usr/bin/package-query -b ./pacman -S $right | head -n 1 | cut -f 2 -d " ")
-				else
-					# Check same package in repo and Arch
-					in_repo=$(/usr/bin/pacman -Si $left | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
-					in_arch=$(/usr/bin/package-query -b ./pacman -S $left | head -n 1 | cut -f 2 -d " ")
-				fi
-				# Check if changed
-				if [ "$in_repo" == "$in_arch" ]; then
-					echo "$left: no change ($in_repo)"
-				else
-					echo -e "\033[1m $left: \033[0m $in_repo -> $in_arch ($right)"
-				fi
-				# Unset the left and right variables so that they can be used correctly in the next loop instance
-				unset left right
-			done < $afile
-		else
-			echo "Could not find package file" && exit 1
-		fi
+		check-pkg-file $afile
+		# Now query arch package from this repo
+		while read p; do
+			# Get first (or only) package in current line
+			left=$(echo $p | cut -f 1 -d " ")
+			# Check for commented out line
+			if [ "$(echo $left | cut -c 1)" == "#" ]; then
+				continue  # skip this loop instance
+			fi
+			# Check if additional "other" package is specified
+			if [ $(echo $p | wc -w) -eq 2 ]; then
+				# Check repo package (on left) against Arch package (on right)
+				right=$(echo $p | cut -f 2 -d " ")
+				in_repo=$(/usr/bin/pacman -Si $left | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
+				in_arch=$(/usr/bin/package-query -b ./pacman -S $right | head -n 1 | cut -f 2 -d " ")
+			else
+				# Check same package in repo and Arch
+				in_repo=$(/usr/bin/pacman -Si $left | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
+				in_arch=$(/usr/bin/package-query -b ./pacman -S $left | head -n 1 | cut -f 2 -d " ")
+			fi
+			# Check if changed
+			if [ "$in_repo" == "$in_arch" ]; then
+				echo "$left: no change ($in_repo)"
+			else
+				echo -e "\033[1m $left: \033[0m $in_repo -> $in_arch ($right)"
+			fi
+			# Unset the left and right variables so that they can be used correctly in the next loop instance
+			unset left right
+		done < $afile
 	fi
 	;;
 -r)
@@ -234,36 +273,33 @@ EOF
 			echo -e "\033[1m $left: \033[0m $in_repo_p1 -> $in_repo_p2 ($right)"
 		fi
 	else
+		check-pkg-file $rfile
 		# Check packages in package file for version changes
-		if [ -e $rfile ]; then
-			while read p; do
-				# Get first package in current line
-				left=$(echo $p | cut -f 1 -d " ")
-				# Check for commented out line
-				if [ $(echo $left | cut -c 1) == "#" ]; then
-					continue  # skip this loop instance
-				fi
-				# Get second package in current line
-				right=$(echo $p | cut -f 2 -d " ")
-				# Check if second package specified
-				if [ "$left" == "$right" ]; then
-					echo "$left: second package not specified" && continue
-				fi		
-				# Check repo package (on left) against repo package (on right)
-				in_repo_p1=$(/usr/bin/pacman -Si $left | grep Version | head -n 1 | cut -f 2 -d ":" | cut -c 2-)
-				in_repo_p2=$(/usr/bin/pacman -Si $right | grep Version | head -n 1 | cut -f 2 -d ":" | cut -c 2-)
-				# Check if changed
-				if [ "$in_repo_p1" == "$in_repo_p2" ]; then
-					echo "$left, $right: no change ($in_repo_p1)"
-				else
-					echo -e "\033[1m $left: \033[0m $in_repo_p1 -> $in_repo_p2 ($right)"
-				fi
-				# Unset the left and right variables so that they can be used correctly in the next loop instance
-				unset left right
-			done < $rfile
-		else
-			echo "Could not find package file" && exit 1
-		fi
+		while read p; do
+			# Get first package in current line
+			left=$(echo $p | cut -f 1 -d " ")
+			# Check for commented out line
+			if [ $(echo $left | cut -c 1) == "#" ]; then
+				continue  # skip this loop instance
+			fi
+			# Get second package in current line
+			right=$(echo $p | cut -f 2 -d " ")
+			# Check if second package specified
+			if [ "$left" == "$right" ]; then
+				echo "$left: second package not specified" && continue
+			fi
+			# Check repo package (on left) against repo package (on right)
+			in_repo_p1=$(/usr/bin/pacman -Si $left | grep Version | head -n 1 | cut -f 2 -d ":" | cut -c 2-)
+			in_repo_p2=$(/usr/bin/pacman -Si $right | grep Version | head -n 1 | cut -f 2 -d ":" | cut -c 2-)
+			# Check if changed
+			if [ "$in_repo_p1" == "$in_repo_p2" ]; then
+				echo "$left, $right: no change ($in_repo_p1)"
+			else
+				echo -e "\033[1m $left: \033[0m $in_repo_p1 -> $in_repo_p2 ($right)"
+			fi
+			# Unset the left and right variables so that they can be used correctly in the next loop instance
+			unset left right
+		done < $rfile
 	fi
 	;;
 -o)
@@ -285,36 +321,33 @@ EOF
 			echo -e "\033[1m $left: \033[0m $in_aur_p1 -> $in_aur_p2 ($right)"
 		fi
 	else
+		check-pkg-file $ofile
 		# Check packages in package file for version changes
-		if [ -e $ofile ]; then
-			while read p; do
-				# Get first package in current line
-				left=$(echo $p | cut -f 1 -d " ")
-				# Check for commented out line
-				if [ $(echo $left | cut -c 1) == "#" ]; then
-					continue  # skip this loop instance
-				fi
-				# Get second package in current line
-				right=$(echo $p | cut -f 2 -d " ")
-				# Check if second package specified
-				if [ "$left" == "$right" ]; then
-					echo "$left: second package not specified" && continue
-				fi
-				# Check aur package (on left) against another aur package (on right)
-				in_aur_p1=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
-				in_aur_p2=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
-				# Check if changed
-				if [ "$in_aur_p1" == "$in_aur_p2" ]; then
-					echo "$left, $right: no change ($in_aur_p1)"
-				else
-					echo -e "\033[1m $left: \033[0m $in_aur_p1 -> $in_aur_p2 ($right)"
-				fi
-				# Unset the left and right variables so that they can be used correctly in the next loop instance
-				unset left right
-			done < $ofile
-		else
-			echo "Could not find package file" && exit 1
-		fi
+		while read p; do
+			# Get first package in current line
+			left=$(echo $p | cut -f 1 -d " ")
+			# Check for commented out line
+			if [ $(echo $left | cut -c 1) == "#" ]; then
+				continue  # skip this loop instance
+			fi
+			# Get second package in current line
+			right=$(echo $p | cut -f 2 -d " ")
+			# Check if second package specified
+			if [ "$left" == "$right" ]; then
+				echo "$left: second package not specified" && continue
+			fi
+			# Check aur package (on left) against another aur package (on right)
+			in_aur_p1=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
+			in_aur_p2=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
+			# Check if changed
+			if [ "$in_aur_p1" == "$in_aur_p2" ]; then
+				echo "$left, $right: no change ($in_aur_p1)"
+			else
+				echo -e "\033[1m $left: \033[0m $in_aur_p1 -> $in_aur_p2 ($right)"
+			fi
+			# Unset the left and right variables so that they can be used correctly in the next loop instance
+			unset left right
+		done < $ofile
 	fi
 	;;
 -u)
@@ -339,38 +372,35 @@ EOF
 			fi
 		done
 	else
+		check-pkg-file $ufile
 		# Check packages in package file for version changes between repo and AUR
-		if [ -e $ufile ]; then
-			while read p; do
-				# Get first (or only) package in current line
-				left=$(echo $p | cut -f 1 -d " ")
-				# Check for commented out line
-				if [ $(echo $left | cut -c 1) == "#" ]; then
-					continue  # skip this loop instance
-				fi
-				# Check if additional "other" package is specified
-				if [ $(echo $p | wc -w) -eq 2 ]; then
-					# Check repo package (on left) against AUR package (on right)
-					right=$(echo $p | cut -f 2 -d " ")
-					installed=$(/usr/bin/pacman -Qi $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
-					in_aur=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
-				else
-					# Check same package in repo and AUR
-					installed=$(/usr/bin/pacman -Qi $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
-					in_aur=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
-				fi
-				# Check if changed
-					if [ "$installed" == "$in_aur" ]; then
-					echo "$left: no change ($installed)"
-				else
-					echo -e "\033[1m $left: \033[0m $installed -> $in_aur ($right)"
-				fi
-				# Unset the left and right variables so that they can be used correctly in the next loop instance
-				unset left right
-			done < $ufile
-		else
-			echo "Could not find package file" && exit 1
-		fi
+		while read p; do
+			# Get first (or only) package in current line
+			left=$(echo $p | cut -f 1 -d " ")
+			# Check for commented out line
+			if [ $(echo $left | cut -c 1) == "#" ]; then
+				continue  # skip this loop instance
+			fi
+			# Check if additional "other" package is specified
+			if [ $(echo $p | wc -w) -eq 2 ]; then
+				# Check repo package (on left) against AUR package (on right)
+				right=$(echo $p | cut -f 2 -d " ")
+				installed=$(/usr/bin/pacman -Qi $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+				in_aur=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
+			else
+				# Check same package in repo and AUR
+				installed=$(/usr/bin/pacman -Qi $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+				in_aur=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
+			fi
+			# Check if changed
+				if [ "$installed" == "$in_aur" ]; then
+				echo "$left: no change ($installed)"
+			else
+				echo -e "\033[1m $left: \033[0m $installed -> $in_aur ($right)"
+			fi
+			# Unset the left and right variables so that they can be used correctly in the next loop instance
+			unset left right
+		done < $ufile
 	fi
 	;;
 *)
@@ -397,42 +427,39 @@ EOF
 			echo -e "\033[1m $left: \033[0m $in_repo -> $in_aur ($right)"
 		fi
 	else
+		check-pkg-file $pfile
 		# Check packages in package file for version changes between repo and AUR
-		if [ -e $pfile ]; then
-			while read p; do
-				# Get first (or only) package in current line
-				left=$(echo $p | cut -f 1 -d " ")
-				# Check for commented out line
-				if [ "$(echo $left | cut -c 1)" == "#" ]; then
-					continue  # skip this loop instance
-				fi
-				# Check for blank line
-				if [ -z "$left" ]; then
-					continue  # skip this loop instance
-				fi
-				# Check if additional "other" package is specified
-				if [ $(echo $p | wc -w) -eq 2 ]; then
-					# Check repo package (on left) against AUR package (on right)
-					right=$(echo $p | cut -f 2 -d " ")
-					in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
-					in_aur=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
-				else
-					# Check same package in repo and AUR
-					in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
-					in_aur=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
-				fi
-				# Check if changed
-					if [ "$in_repo" == "$in_aur" ]; then
-					echo "$left: no change ($in_repo)"
-				else
-					echo -e "\033[1m $left: \033[0m $in_repo -> $in_aur ($right)"
-				fi
-				# Unset the left and right variables so that they can be used correctly in the next loop instance
-				unset left right
-			done < $pfile
-		else
-			echo "Could not find package file" && exit 1
-		fi
+		while read p; do
+			# Get first (or only) package in current line
+			left=$(echo $p | cut -f 1 -d " ")
+			# Check for commented out line
+			if [ "$(echo $left | cut -c 1)" == "#" ]; then
+				continue  # skip this loop instance
+			fi
+			# Check for blank line
+			if [ -z "$left" ]; then
+				continue  # skip this loop instance
+			fi
+			# Check if additional "other" package is specified
+			if [ $(echo $p | wc -w) -eq 2 ]; then
+				# Check repo package (on left) against AUR package (on right)
+				right=$(echo $p | cut -f 2 -d " ")
+				in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+				in_aur=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
+			else
+				# Check same package in repo and AUR
+				in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
+				in_aur=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
+			fi
+			# Check if changed
+				if [ "$in_repo" == "$in_aur" ]; then
+				echo "$left: no change ($in_repo)"
+			else
+				echo -e "\033[1m $left: \033[0m $in_repo -> $in_aur ($right)"
+			fi
+			# Unset the left and right variables so that they can be used correctly in the next loop instance
+			unset left right
+		done < $pfile
 	fi
 	;;
 esac

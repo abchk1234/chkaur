@@ -1,3 +1,5 @@
+# Package in repo	 # Package in Arch repo
+
 eudev-systemdcompat	 libsystemd
 xfce4-power-manager-pmu	 xfce4-power-manager
 lxdm-consolekit		 lxdm

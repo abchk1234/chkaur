@@ -18,6 +18,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
+ver="0.2" # Version
+
 # File from which to get list of packages
 pfile="./lists/pkglist.txt"
 
@@ -36,6 +38,9 @@ ofile="./lists/aurlist.txt"
 # File from which to get list of ignored packages
 ifile="./lists/ignlist.txt"
 
+editor="/usr/bin/vim" # Editor for viewing/editing package lists.
+#editor="/usr/bin/nano" # Alternate editor
+
 # Function to check if dependencies are installed
 check_dep () {
 	if [ ! -e /usr/bin/package-query ]; then 
@@ -46,6 +51,29 @@ check_net () {
 	if [ ! "$(ping -c 1 google.com)" ]; then
 		echo "Internet connection not available. Internet access is required to check the AUR" && exit 1
 	fi
+}
+
+check-file () {
+	if [ ! -e "$1" ]; then
+		echo "File: $1 does not exist" && exit 1
+	fi
+}
+
+edit-file () {
+	if [ -e $editor ]; then
+		$editor $1
+	elif [ -e /usr/bin/nano ]; then
+		nano $1
+	elif [ -e /usr/bin/vim ]; then
+		vim $1
+	else
+		echo "Unable to find editor to edit the $1 file" && exit 1
+	fi
+}
+
+check-update () {
+	# To be done
+	echo
 }
 
 case "$1" in
@@ -88,6 +116,24 @@ EOF
 		done	
 	else
 		echo "Could not find ignored file" && exit 1
+	fi
+	;;
+-e)
+	if [ -z "$2" ]; then
+		echo "File name not entered" && exit 1
+	fi
+	if [ "$2" == "pkglist" ]; then
+		check-file $pfile && edit-file $pfile
+	elif [ "$2" == "ignlist" ]; then
+		check-file $ifile && edit-file $ifile
+	elif [ "$2" == "repolist" ]; then
+		check-file $rfile && edit-file $rfile
+	elif [ "$2" == "archlist" ]; then
+		check-file $afile && edit-file $afile
+	elif [ "$2" == "aurlist" ]; then
+		check-file $ofile && edit-file $ofile
+	else
+		echo "Could not understand filename" && exit 1
 	fi
 	;;
 -c)
@@ -357,7 +403,11 @@ EOF
 				# Get first (or only) package in current line
 				left=$(echo $p | cut -f 1 -d " ")
 				# Check for commented out line
-				if [ $(echo $left | cut -c 1) == "#" ]; then
+				if [ "$(echo $left | cut -c 1)" == "#" ]; then
+					continue  # skip this loop instance
+				fi
+				# Check for blank line
+				if [ -z "$left" ]; then
 					continue  # skip this loop instance
 				fi
 				# Check if additional "other" package is specified

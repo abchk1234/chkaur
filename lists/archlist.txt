@@ -1,6 +1,5 @@
 # Package in repo	 # Package in Arch repo
 
-eudev-systemdcompat	 libsystemd
 xfce4-power-manager-pmu	 xfce4-power-manager
 lxdm-consolekit		 lxdm
-xfce4-session-consolekit xfce4-session
+openresolv-openrc	 openresolv

@@ -1,16 +1,17 @@
 #thermald
 #qbittorent
-#yaourt
-#downgrade
-laptop-mode-tools
 #timeset
 #timeset-gui
 #allservers
 #pekwm-menu
 #wallpaperd
 #i-nex	i-nex-git
-#eudev-systemdcompat libsystemd
-xfce4-power-manager xfce4-power-manager-pmu
-lxdm lxdm-consolekit
-xfce4-session xfce4-session-consolekit
+#yaourt
+#downgrade
+#libsystemd		eudev-systemdcompat
 
+# Repo pkg		# AUR pkg
+laptop-mode-tools
+xfce4-power-manager	xfce4-power-manager-pmu
+xfce4-session		xfce4-session-consolekit
+openresolv		openresolv-openrc

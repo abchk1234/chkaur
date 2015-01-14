@@ -78,45 +78,52 @@ check-pkg-file () {
 	fi
 }
 
-get-arch-package () {
-	# TBD
-	echo
+query-installed-pkg () {
+	pkg="$1" # package is first argument
+	installed=$(/usr/bin/pacman -Qi $pkg | grep Version | cut -f 2 -d ":" | cut -c 2-)
+}
+
+query-repo-pkg () {
+	pkg="$1" # package is first argument
+	in_repo=$(/usr/bin/pacman -Si $pkg | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
+}
+
+query-aur-pkg () {
+	pkg="$1" # package is first argument
+	in_aur=$(/usr/bin/package-query -A $pkg | head -n 1 | cut -f 2 -d " ")
+}
+
+query-arch-repo-pkg () {
+	pkg="$1" # package is first argument
+	in_arch=$(/usr/bin/package-query -b ./pacman -S $pkg | head -n 1 | cut -f 2 -d " ")
+}
+
+# Parse the file specified and set left and right packages
+parse-and-set () {
+	# Check for empty lines and comments
+	if [ -z "$p" ]; then
+		return 1
+	elif [ "$(echo $p | cut -c 1)" == "#" ]; then
+		return 1
+	else
+		# Get first package in current line
+		left=$(echo $p | cut -f 1 -d " ")
+		# Get second package in current line
+		right=$(echo $p | cut -f 2 -d " ")
+		# Check if second package specified
+		if [ "$left" == "$right" ]; then
+			unset right
+		fi
+	fi
 }
 
 check-update () {
-	file="$1" # file from which to read packages specified as first argument
-	progl="$2" # program to use for left package
-	progr="$3" # program to use for right package
-	# Check packages in package file for version changes
-	if [ -e $file ]; then
-		while read p; do
-			# Get first package in current line
-			left=$(echo $p | cut -f 1 -d " ")
-			# Check for commented out line
-			if [ $(echo $left | cut -c 1) == "#" ]; then
-				continue  # skip this loop instance
-			fi
-			# Get second package in current line
-			right=$(echo $p | cut -f 2 -d " ")
-			# Check if second package specified
-			if [ "$left" == "$right" ]; then
-				echo "$left: second package not specified" && continue
-			fi
-			# Check package on left against package on right
-			pkg1=$($progl -A $left | head -n 1 | cut -f 2 -d " ")
-			pkg2=$($progr -A $right | head -n 1 | cut -f 2 -d " ")
-			# Check if changed
-			if [ "$pkg1" == "$pkg2" ]; then
-				echo "$left, $right: no change ($pkg1)"
-			else
-				echo -e "\033[1m $left: \033[0m $pkg1 -> $pkg2 ($right)"
-			fi
-			# Unset the left and right variables so that they can be used correctly in the next loop instance
-			unset left right
-		done < $file
-	else
-		echo "Could not find package file $file" && exit 1
-	fi
+		# Assuming that $pkg1 and $pkg2 have already been set
+		if [ "$pkg1" == "$pkg2" ]; then
+			echo "$left, $right: no change ($pkg1)"
+		else
+			echo -e "\033[1m $left: \033[0m $pkg1 -> $pkg2 ($right)"
+		fi
 }
 
 case "$1" in
@@ -151,8 +158,8 @@ EOF
 	if [ -e $ifile ]; then
 		echo -e "\033[1mIgnored: \033[0m"
 		for i in $(cat $ifile); do
-			# Check for commented out line
-			if [ $(echo $i | cut -c 1) == "#" ]; then
+			# Check for blank and commented out lines
+			if [ -z "$i" ] || [ "$(echo $i | cut -c 1)" == "#" ]; then
 				continue  # skip this loop instance
 			fi
 			echo $i
@@ -202,56 +209,38 @@ EOF
 	;;
 -a)
 	# First sync arch repo to pacman folder in current directory
-	fakeroot pacman -b ./pacman --config ./pacman/pacman-$(uname -m).conf -Sy
+	fakeroot pacman --noprogressbar -b ./pacman --config ./pacman/pacman-$(uname -m).conf -Sy
 	# Check if package is specified
 	if [ -n "$2" ]; then
-		left=$2
+		query-repo-pkg "$2"
+		pkg1="$in_repo"
 		# Check if additional "other" package is specified
 		if [ -n "$3" ]; then
-			right="$3"
-			in_repo=$(/usr/bin/pacman -Si $left | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
-			in_arch=$(/usr/bin/package-query -b ./pacman -S $right | head -n 1 | cut -f 2 -d " ")
+			query-arch-repo-pkg "$3"
 		else
-			# Check same package in repo and Arch
-			in_repo=$(/usr/bin/pacman -Si $left | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
-			in_arch=$(/usr/bin/package-query -b ./pacman -S $left | head -n 1 | cut -f 2 -d " ")
+			query-arch-repo-pkg "$2"
 		fi
-		# Check if changed
-		if [ "$in_repo" == "$in_arch" ]; then
-			echo "$left: no change ($in_repo)"
-		else
-			echo -e "\033[1m $left: \033[0m $in_repo -> $in_arch ($right)"
-		fi
+		pkg2="$in_arch"
+		check-update
 	else
 		check-pkg-file $afile
-		# Now query arch package from this repo
+		# Check packages in package file for version changes
 		while read p; do
-			# Get first (or only) package in current line
-			left=$(echo $p | cut -f 1 -d " ")
-			# Check for commented out line
-			if [ "$(echo $left | cut -c 1)" == "#" ]; then
-				continue  # skip this loop instance
-			fi
+			# Parse the line and get left (and right) package(s)
+			parse-and-set || continue
+			query-repo-pkg "$left"
+			pkg1="$in_repo"
 			# Check if additional "other" package is specified
-			if [ $(echo $p | wc -w) -eq 2 ]; then
-				# Check repo package (on left) against Arch package (on right)
-				right=$(echo $p | cut -f 2 -d " ")
-				in_repo=$(/usr/bin/pacman -Si $left | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
-				in_arch=$(/usr/bin/package-query -b ./pacman -S $right | head -n 1 | cut -f 2 -d " ")
+			if [ -n "$right" ]; then
+				query-arch-repo-pkg "$right"
 			else
-				# Check same package in repo and Arch
-				in_repo=$(/usr/bin/pacman -Si $left | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
-				in_arch=$(/usr/bin/package-query -b ./pacman -S $left | head -n 1 | cut -f 2 -d " ")
+				query-arch-repo-pkg "$left"
 			fi
-			# Check if changed
-			if [ "$in_repo" == "$in_arch" ]; then
-				echo "$left: no change ($in_repo)"
-			else
-				echo -e "\033[1m $left: \033[0m $in_repo -> $in_arch ($right)"
-			fi
-			# Unset the left and right variables so that they can be used correctly in the next loop instance
-			unset left right
-		done < $afile
+			pkg2="$in_arch"
+			check-update
+			# Unset the variables so that they can be used correctly in the next loop instance
+			unset left right pkg1 pkg2
+		done < $file
 	fi
 	;;
 -r)

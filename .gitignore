@@ -1,5 +1,4 @@
 pacman/sync
 *.swp
 lists
-lists/*
 *~

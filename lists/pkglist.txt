@@ -1,17 +1,6 @@
-#thermald
-#qbittorent
-#timeset
-#timeset-gui
-#allservers
-#pekwm-menu
-#wallpaperd
-#i-nex	i-nex-git
-#yaourt
-#downgrade
-#libsystemd		eudev-systemdcompat
+# AUR pkg			# Repo pkg
 
-# Repo pkg		# AUR pkg
 laptop-mode-tools
-xfce4-power-manager	xfce4-power-manager-pmu
-xfce4-session		xfce4-session-consolekit
-openresolv		openresolv-openrc
+xfce4-power-manager-pmu		xfce4-power-manager
+xfce4-session-consolekit	xfce4-session
+openresolv-openrc		openresolv

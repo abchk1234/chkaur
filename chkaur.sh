@@ -121,9 +121,9 @@ parse-and-set () {
 check-update () {
 		# Assuming that $pkg1 and $pkg2 have already been set
 		if [ "$pkg1" == "$pkg2" ]; then
-			echo "$left, $right: no change ($pkg1)"
+			printf "%-25s \t no change \t (%s)\n" "$left" "$pkg1"
 		else
-			echo -e "\033[1m $left: \033[0m $pkg1 -> $pkg2 ($right)"
+			printf "\033[1m %-23s \033[0m %s -> %s \t (%s)\n" "$left" "$pkg1" "$pkg2" "$right"
 		fi
 }
 
@@ -170,7 +170,7 @@ EOF
 	if [ -z "$2" ]; then
 		echo "File name not entered" && exit 1
 	fi
-	if [ "$2" == "pkglist" ]; then
+	if   [ "$2" == "pkglist" ]; then
 		check-file $pfile && edit-file $pfile
 	elif [ "$2" == "ignlist" ]; then
 		check-file $ifile && edit-file $ifile
@@ -193,14 +193,14 @@ EOF
 			continue
 		fi
 		# Check package version in repo and AUR
-		in_repo=$(/usr/bin/pacman -Si $i | grep Version | cut -f 2 -d ":" | cut -c 2-)
-		in_aur=$(/usr/bin/package-query -A $i | head -n 1 | cut -f 2 -d " ")
+		query-repo-pkg "$2"
+		pkg1="$in_repo"
+		query-aur-pkg "$2"
+		pkg2="$in_aur"
 		# Check if changed
-		if [ "$in_repo" == "$in_aur" ]; then
-			echo "$i: no change ($in_repo)"
-		else
-			echo -e "\033[1m $i: \033[0m $in_repo -> $in_aur"
-		fi
+		check-update
+		# Unset the variables so that they can be used correctly in the next loop instance
+		unset left right pkg1 pkg2
 	done
 	;;
 -a)
@@ -295,56 +295,35 @@ EOF
 	check_net
 	# Check if package is specified
 	if [ -n "$2" ]; then
-		left="$2"
-		# Check if other package is specified
+		query-aur-pkg "$2"
+		pkg1="$in_aur"
+		# Check if additional "other" package is specified
 		if [ -n "$3" ]; then
-			right="$3"
-			in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
-			in_aur=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
+			query-repo-pkg "$3"
 		else
-			# Check same package in repo and Arch
-			in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
-			in_arch=$(/usr/bin/package-query -b ./pacman -S $left | head -n 1 | cut -f 2 -d " ")
+			query-repo-pkg "$2"
 		fi
+		pkg2="$in_repo"
 		# Check if changed
-		if [ "$in_repo" == "$in_aur" ]; then
-			echo "$left: no change ($in_repo)"
-		else
-			echo -e "\033[1m $left: \033[0m $in_repo -> $in_aur ($right)"
-		fi
+		check-update
 	else
 		check-pkg-file $pfile
 		# Check packages in package file for version changes between repo and AUR
 		while read p; do
-			# Get first (or only) package in current line
-			left=$(echo $p | cut -f 1 -d " ")
-			# Check for commented out line
-			if [ "$(echo $left | cut -c 1)" == "#" ]; then
-				continue  # skip this loop instance
-			fi
-			# Check for blank line
-			if [ -z "$left" ]; then
-				continue  # skip this loop instance
-			fi
+			# Parse the line and get left (and right) package(s)
+			parse-and-set || continue
+			query-aur-pkg "$left"
+			pkg1="$in_aur"
 			# Check if additional "other" package is specified
-			if [ $(echo $p | wc -w) -eq 2 ]; then
-				# Check repo package (on left) against AUR package (on right)
-				right=$(echo $p | cut -f 2 -d " ")
-				in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
-				in_aur=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
+			if [ -n "$right" ]; then
+				query-repo-pkg "$right"
 			else
-				# Check same package in repo and AUR
-				in_repo=$(/usr/bin/pacman -Si $left | grep Version | cut -f 2 -d ":" | cut -c 2-)
-				in_aur=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
+				query-repo-pkg "$left"
 			fi
-			# Check if changed
-				if [ "$in_repo" == "$in_aur" ]; then
-				echo "$left: no change ($in_repo)"
-			else
-				echo -e "\033[1m $left: \033[0m $in_repo -> $in_aur ($right)"
-			fi
-			# Unset the left and right variables so that they can be used correctly in the next loop instance
-			unset left right
+			pkg2="$in_repo"
+			check-update
+			# Unset the variables so that they can be used correctly in the next loop instance
+			unset left right pkg1 pkg2
 		done < $pfile
 	fi
 	;;

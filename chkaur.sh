@@ -86,17 +86,17 @@ check-pkg-file () {
 
 query-repo-pkg () {
 	pkg="$1" # package is first argument
-	in_repo=$(/usr/bin/pacman -Si $pkg | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
+	in_repo=$(pacman -Si $pkg | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
 }
 
 query-aur-pkg () {
 	pkg="$1" # package is first argument
-	in_aur=$(/usr/bin/package-query -A $pkg | head -n 1 | cut -f 2 -d " ")
+	in_aur=$(package-query -A $pkg | head -n 1 | cut -f 2 -d " ")
 }
 
 query-arch-repo-pkg () {
 	pkg="$1" # package is first argument
-	in_arch=$(/usr/bin/package-query -b ./pacman -S $pkg | head -n 1 | cut -f 2 -d " ")
+	in_arch=$(package-query -b ./repo -S $pkg | head -n 1 | cut -f 2 -d " ")
 }
 
 # Parse the file specified and set left and right packages
@@ -123,7 +123,7 @@ check-update () {
 		if [ "$pkg1" == "$pkg2" ]; then
 			printf "%-25s \t no change \t (%s)\n" "$left" "$pkg1"
 		else
-			printf "\033[1m %-23s \033[0m %s -> %s \t (%s)\n" "$left" "$pkg1" "$pkg2" "$right"
+			printf "\033[1m%-23s \033[0m %s -> %s \t (%s)\n" "$left" "$pkg1" "$pkg2" "$right"
 		fi
 }
 
@@ -193,9 +193,10 @@ EOF
 			continue
 		fi
 		# Check package version in repo and AUR
-		query-repo-pkg "$2"
+		left="$i" # necessary to get name of package in output
+		query-repo-pkg "$i"
 		pkg1="$in_repo"
-		query-aur-pkg "$2"
+		query-aur-pkg "$i"
 		pkg2="$in_aur"
 		# Check if changed
 		check-update
@@ -207,7 +208,7 @@ EOF
 	check_dep
 	check_net
 	# First sync arch repo to pacman folder in current directory
-	fakeroot pacman --noprogressbar -b ./pacman --config ./pacman/pacman-$(uname -m).conf -Sy
+	fakeroot pacman --noprogressbar -b ./repo --config ./repo/pacman-$(uname -m).conf -Sy
 	# Check if package is specified
 	if [ -n "$2" ]; then
 		query-repo-pkg "$2"
@@ -244,48 +245,35 @@ EOF
 -o)
 	# Check package in AUR against another package in the AUR
 	if [ -n "$2" ]; then
-		left="$2"
-		# Check if other package is specified
+		query-aur-pkg "$2"
+		pkg1="$in_aur"
+		# Check if additional "other" package is specified
 		if [ -n "$3" ]; then
-			right="$3"
+			query-aur-pkg "$3"
+			pkg2="$in_aur"
 		else
 			echo "second package not specified" && exit 1
 		fi
-		in_aur_p1=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
-		in_aur_p2=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
 		# Check if changed
-		if [ "$in_aur_p1" == "$in_aur_p2" ]; then
-			echo "$left, $right: no change ($in_aur_p1)"
-		else
-			echo -e "\033[1m $left: \033[0m $in_aur_p1 -> $in_aur_p2 ($right)"
-		fi
+		check-update
 	else
 		check-pkg-file $ofile
 		# Check packages in package file for version changes
 		while read p; do
-			# Get first package in current line
-			left=$(echo $p | cut -f 1 -d " ")
-			# Check for commented out line
-			if [ $(echo $left | cut -c 1) == "#" ]; then
-				continue  # skip this loop instance
-			fi
-			# Get second package in current line
-			right=$(echo $p | cut -f 2 -d " ")
-			# Check if second package specified
-			if [ "$left" == "$right" ]; then
+			# Parse the line and get left (and right) package(s)
+			parse-and-set || continue
+			query-aur-pkg "$left"
+			pkg1="$in_aur"
+			# Check if additional "other" package is specified
+			if [ -n "$right" ]; then
+				query-aur-pkg "$right"
+				pkg2="$in_aur"
+			else
 				echo "$left: second package not specified" && continue
 			fi
-			# Check aur package (on left) against another aur package (on right)
-			in_aur_p1=$(/usr/bin/package-query -A $left | head -n 1 | cut -f 2 -d " ")
-			in_aur_p2=$(/usr/bin/package-query -A $right | head -n 1 | cut -f 2 -d " ")
-			# Check if changed
-			if [ "$in_aur_p1" == "$in_aur_p2" ]; then
-				echo "$left, $right: no change ($in_aur_p1)"
-			else
-				echo -e "\033[1m $left: \033[0m $in_aur_p1 -> $in_aur_p2 ($right)"
-			fi
-			# Unset the left and right variables so that they can be used correctly in the next loop instance
-			unset left right
+			check-update
+			# Unset the variables so that they can be used correctly in the next loop instance
+			unset left right pkg1 pkg2
 		done < $ofile
 	fi
 	;;

@@ -1,4 +1,5 @@
-pacman/sync
+repo/sync
+repo/local
 *.swp
-lists
+lists/
 *~

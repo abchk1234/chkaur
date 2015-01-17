@@ -42,7 +42,7 @@ editor="/usr/bin/vim" # Editor for viewing/editing package lists.
 
 # Function to check if dependencies are installed
 check_dep () {
-	if [ ! -e /usr/bin/package-query ]; then 
+	if [ ! -x /usr/bin/package-query ]; then 
 		echo "package-query not available. Please install it to run this application" && exit 1
 	fi
 }
@@ -61,7 +61,7 @@ check-file () {
 }
 
 edit-file () {
-	if [ -e $editor ]; then
+	if   [ -e $editor ]; then
 		$editor $1
 	elif [ -e /usr/bin/nano ]; then
 		nano $1
@@ -82,7 +82,6 @@ check-pkg-file () {
 query-pkg () {
 	ptype="$1" # type (repo, aur, local) is first argument
 	pkg="$2"   # package is second argument
-
 	if   [ "$ptype" == "repo" ]; then
 		out_pkg=$(pacman -Si $pkg | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
 	elif [ "$ptype" == "aur" ]; then
@@ -90,7 +89,7 @@ query-pkg () {
 	elif [ "$ptype" == "local" ]; then
 		out_pkg=$(package-query -b ./repo -S $pkg | head -n 1 | cut -f 2 -d " ")
 	else
-		echo "invalid search type" && exit 1
+		echo "invalid query type" && exit 1
 	fi
 }
 
@@ -160,7 +159,6 @@ EOF
 	fi
 	;;
 -c)
-	# Check specified packages only
 	check_dep
 	check_net
 	# Parse command line arguments
@@ -169,12 +167,9 @@ EOF
 		if [ "$i" == "-c" ]; then
 			continue
 		fi
-		# Check package version in repo and AUR
 		left="$i" # necessary to get name of package in output
-		query-pkg 'repo' "$i"
-		pkg1="$out_pkg"
-		query-pkg 'aur' "$i"
-		pkg2="$out_pkg"
+		query-pkg 'repo' "$i" && pkg1="$out_pkg"
+		query-pkg 'aur' "$i" && pkg2="$out_pkg"
 		# Check if changed
 		check-update
 		# Unset the variables so that they can be used correctly in the next loop instance
@@ -189,8 +184,7 @@ EOF
 	# Check if package is specified
 	if [ -n "$2" ]; then
 		left="$2" # Required for package name in output
-		query-pkg 'repo' "$2"
-		pkg1="$out_pkg"
+		query-pkg 'repo' "$2" && pkg1="$out_pkg"
 		# Check if additional "other" package is specified
 		if [ -n "$3" ]; then
 			right="$3" # Required for package name in output
@@ -206,8 +200,7 @@ EOF
 		while read p; do
 			# Parse the line and get left (and right) package(s)
 			parse-and-set || continue
-			query-pkg 'repo' "$left"
-			pkg1="$out_pkg"
+			query-pkg 'repo' "$left" && pkg1="$out_pkg"
 			# Check if additional "other" package is specified
 			if [ -n "$right" ]; then
 				query-pkg 'local' "$right"
@@ -228,8 +221,7 @@ EOF
 	# Check if package is specified
 	if [ -n "$2" ]; then
 		left="$2" # Required for package name in output
-		query-pkg 'aur' "$2"
-		pkg1="$out_pkg"
+		query-pkg 'aur' "$2" &&	pkg1="$out_pkg"
 		# Check if additional "other" package is specified
 		if [ -n "$3" ]; then
 			right="$3" # Required for package name in output
@@ -246,8 +238,7 @@ EOF
 		while read p; do
 			# Parse the line and get left (and right) package(s)
 			parse-and-set || continue
-			query-pkg 'aur' "$left"
-			pkg1="$out_pkg"
+			query-pkg 'aur' "$left" && pkg1="$out_pkg"
 			# Check if additional "other" package is specified
 			if [ -n "$right" ]; then
 				query-pkg 'repo' "$right"

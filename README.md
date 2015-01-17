@@ -1,11 +1,11 @@
 Check repo packages for updates against packages in the AUR.
 
-## Requires
+# Requires
 
 * package-query
 * Internet connection for checking AUR packages
 
-## Files used
+# Files used
 
 ```lists\pkglist.txt```: Contains list of packages to be checked for updates
 
@@ -44,4 +44,34 @@ Some packages may be known to have different version in AUR, but are not require
 Such packages can be put in the ignored list, and may be taken out of it and into the pkglist if required.
 
 This is only informational in nature.
+
+# Syntax
+
+~~~~
+./chkaur.sh [option] [package(s)]
+~~~~
+
+# Examples
+
+~~~~
+./chkaur.sh  # Will check packages specified in lists/pkglist.txt (AUR vs repo)
+
+./chkaur.sh -f  # Equivalent to above
+
+./chkaur.sh -f qbittorrent  # Check qbittorrent (AUR vs repo)
+
+./chkaur.sh -f i-nex-git i-nex  # Check i-nex-git in AUR vs i-nex in repo
+
+./chkaur.sh -a  # Check packages in archlist.txt (Repo vs local Arch repo)
+
+./chkaur.sh -a lxdm  # Check lxdm (repo vs local Arch repo)
+
+./chkaur.sh -a lxdm-consolekit lxdm (lxdm-consolekit in repo vs lxdm in Arch)
+
+./chkaur.sh -c yaourt downgrade  # Check multiple packages (AUR vs repo)
+
+./chkaur.sh -e pkglist  # View and edit lists/pkglist.txt
+
+./chkaur.sh -e archlist  # View and edit lists/archlist.txt
+~~~~
 

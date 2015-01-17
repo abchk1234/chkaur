@@ -26,9 +26,6 @@ pfile="./lists/pkglist.txt"
 # File from which to get arch repo packages
 afile="./lists/archlist.txt"
 
-# File from which to get list of ignored packages
-ifile="./lists/ignlist.txt"
-
 editor="/usr/bin/vim" # Editor for viewing/editing package lists.
 #editor="/usr/bin/nano" # Alternate editor
 
@@ -128,18 +125,19 @@ case "$1" in
 	cat << EOF
 Usage:	chkaur [option] 
 
-chkaur -f [<repo_pkgname> <aur_pkgname>]  : Check repo package against AUR
-chkaur -a [<repo_pkg_name>] [<arch_pkg_name>]  : Check from Arch repo 
-chkaur -c <pkg1> <pkg2> ..  : Check specified packages for updates
-chkaur -i  : Display ignored packages
-chkaur -h  : Display help
+chkaur -f [<aur_pkgname> <repo_pkgname>]  # Check AUR pkg against repo package
+chkaur -a [<repo_pkg_name>] [<arch_pkg_name>]  # Check from Arch repo 
+chkaur -c <pkg1> <pkg2> ..  # Check specified packages for updates
+chkaur -e pkglist  # View and edit lists/pkglist.txt
+chkaur -e archlist  # View and edit lists/archlist.txt
+chkaur -h  # Display help
 
 Examples:
 	
 chkaur	# Equivalent to chkaur -f
 chkaur -f  # Will take packages to check (repo to AUR) from pkglist file
 chkaur -f octopi  # Compare version of package octopi in repo and AUR
-chkaur -f i-nex i-nex-git  # Compare i-nex from repo to i-nex-git in AUR
+chkaur -f i-nex-git i-nex  # Compare i-nex from repo to i-nex-git in AUR
 chkaur -a  # Will take packages to check (repo to Arch repo) from archlist file
 chkaur -a xorg-server  # Check xorg-server version in repo to Arch repo
 chkaur -a eudev-systemdcompat systemd  # Compare pkg1 in repo to pkg2 in Arch
@@ -147,33 +145,14 @@ chkaur -c yaourt downgrade  # Check repo packages to those in AUR
 
 EOF
 	;;
--i)
-	# Display ignored packages from file
-	if [ -e $ifile ]; then
-		echo -e "\033[1mIgnored: \033[0m"
-		for i in $(cat $ifile); do
-			# Check for blank and commented out lines
-			if [ -z "$i" ] || [ "$(echo $i | cut -c 1)" == "#" ]; then
-				continue  # skip this loop instance
-			fi
-			echo $i
-		done	
-	else
-		echo "Could not find ignored file" && exit 1
-	fi
-	;;
 -e)
 	if [ -z "$2" ]; then
 		echo "File name not entered" && exit 1
 	fi
 	if   [ "$2" == "pkglist" ]; then
 		check-file $pfile && edit-file $pfile
-	elif [ "$2" == "ignlist" ]; then
-		check-file $ifile && edit-file $ifile
 	elif [ "$2" == "archlist" ]; then
 		check-file $afile && edit-file $afile
-	elif [ "$2" == "aurlist" ]; then
-		check-file $ofile && edit-file $ofile
 	else
 		echo "Could not understand filename" && exit 1
 	fi
@@ -207,10 +186,12 @@ EOF
 	fakeroot pacman --noprogressbar -b ./repo --config ./repo/pacman-$(uname -m).conf -Sy
 	# Check if package is specified
 	if [ -n "$2" ]; then
+		left="$2" # Required for package name in output
 		query-pkg 'repo' "$2"
 		pkg1="$out_pkg"
 		# Check if additional "other" package is specified
 		if [ -n "$3" ]; then
+			right="$3" # Required for package name in output
 			query-pkg 'local' "$3"
 		else
 			query-pkg 'local' "$2"
@@ -244,10 +225,12 @@ EOF
 	check_net
 	# Check if package is specified
 	if [ -n "$2" ]; then
+		left="$2" # Required for package name in output
 		query-pkg 'aur' "$2"
 		pkg1="$out_pkg"
 		# Check if additional "other" package is specified
 		if [ -n "$3" ]; then
+			right="$3" # Required for package name in output
 			query-pkg 'repo' "$3"
 		else
 			query-pkg 'repo' "$2"

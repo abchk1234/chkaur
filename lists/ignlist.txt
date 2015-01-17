@@ -1,6 +1,0 @@
-# Packages to ignore (excluding commented out ones)
-
-#allservers
-timeset
-#timeset-gui
-fetter

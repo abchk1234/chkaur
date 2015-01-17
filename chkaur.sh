@@ -18,7 +18,7 @@
 ##
 # dependencies: package-query (available in AUR)
 
-ver="0.2" # Version
+ver="0.3" # Version
 
 # File from which to get list of packages
 pfile="./lists/pkglist.txt"
@@ -44,8 +44,7 @@ editor="/usr/bin/vim" # Editor for viewing/editing package lists.
 # This can a little tricky to track.
 
 # The common varibles that are set/unset are:
-# left, right, pkg1, pkg2,
-# installed, in_aur, in_repo, in_arch
+# left, right, pkg1, pkg2, out_pkg
 
 # Function to check if dependencies are installed
 check_dep () {
@@ -84,19 +83,19 @@ check-pkg-file () {
 	fi
 }
 
-query-repo-pkg () {
-	pkg="$1" # package is first argument
-	in_repo=$(pacman -Si $pkg | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
-}
+query-pkg () {
+	ptype="$1" # type (repo, aur, local) is first argument
+	pkg="$2"   # package is second argument
 
-query-aur-pkg () {
-	pkg="$1" # package is first argument
-	in_aur=$(package-query -A $pkg | head -n 1 | cut -f 2 -d " ")
-}
-
-query-arch-repo-pkg () {
-	pkg="$1" # package is first argument
-	in_arch=$(package-query -b ./repo -S $pkg | head -n 1 | cut -f 2 -d " ")
+	if   [ "$ptype" == "repo" ]; then
+		out_pkg=$(pacman -Si $pkg | grep Version | head -n 1  | cut -f 2 -d ":" | cut -c 2-)
+	elif [ "$ptype" == "aur" ]; then
+		out_pkg=$(package-query -A $pkg | head -n 1 | cut -f 2 -d " ")
+	elif [ "$ptype" == "local" ]; then
+		out_pkg=$(package-query -b ./repo -S $pkg | head -n 1 | cut -f 2 -d " ")
+	else
+		echo "invalid search type" && exit 1
+	fi
 }
 
 # Parse the file specified and set left and right packages
@@ -194,10 +193,10 @@ EOF
 		fi
 		# Check package version in repo and AUR
 		left="$i" # necessary to get name of package in output
-		query-repo-pkg "$i"
-		pkg1="$in_repo"
-		query-aur-pkg "$i"
-		pkg2="$in_aur"
+		query-pkg 'repo' "$i"
+		pkg1="$out_pkg"
+		query-pkg 'aur' "$i"
+		pkg2="$out_pkg"
 		# Check if changed
 		check-update
 		# Unset the variables so that they can be used correctly in the next loop instance
@@ -211,15 +210,15 @@ EOF
 	fakeroot pacman --noprogressbar -b ./repo --config ./repo/pacman-$(uname -m).conf -Sy
 	# Check if package is specified
 	if [ -n "$2" ]; then
-		query-repo-pkg "$2"
-		pkg1="$in_repo"
+		query-pkg 'repo' "$2"
+		pkg1="$out_pkg"
 		# Check if additional "other" package is specified
 		if [ -n "$3" ]; then
-			query-arch-repo-pkg "$3"
+			query-pkg 'local' "$3"
 		else
-			query-arch-repo-pkg "$2"
+			query-pkg 'local' "$2"
 		fi
-		pkg2="$in_arch"
+		pkg2="$out_pkg"
 		check-update
 	else
 		check-pkg-file $afile
@@ -227,15 +226,15 @@ EOF
 		while read p; do
 			# Parse the line and get left (and right) package(s)
 			parse-and-set || continue
-			query-repo-pkg "$left"
-			pkg1="$in_repo"
+			query-pkg 'repo' "$left"
+			pkg1="$out_pkg"
 			# Check if additional "other" package is specified
 			if [ -n "$right" ]; then
-				query-arch-repo-pkg "$right"
+				query-pkg 'local' "$right"
 			else
-				query-arch-repo-pkg "$left"
+				query-pkg 'local' "$left"
 			fi
-			pkg2="$in_arch"
+			pkg2="$out_pkg"
 			check-update
 			# Unset the variables so that they can be used correctly in the next loop instance
 			unset left right pkg1 pkg2
@@ -245,12 +244,12 @@ EOF
 -o)
 	# Check package in AUR against another package in the AUR
 	if [ -n "$2" ]; then
-		query-aur-pkg "$2"
-		pkg1="$in_aur"
+		query-pkg 'aur' "$2"
+		pkg1="$out_pkg"
 		# Check if additional "other" package is specified
 		if [ -n "$3" ]; then
-			query-aur-pkg "$3"
-			pkg2="$in_aur"
+			query-pkg 'aur' "$3"
+			pkg2="$out_pkg"
 		else
 			echo "second package not specified" && exit 1
 		fi
@@ -262,12 +261,12 @@ EOF
 		while read p; do
 			# Parse the line and get left (and right) package(s)
 			parse-and-set || continue
-			query-aur-pkg "$left"
-			pkg1="$in_aur"
+			query-pkg 'aur' "$left"
+			pkg1="$out_pkg"
 			# Check if additional "other" package is specified
 			if [ -n "$right" ]; then
-				query-aur-pkg "$right"
-				pkg2="$in_aur"
+				query-pkg 'aur' "$right"
+				pkg2="$out_pkg"
 			else
 				echo "$left: second package not specified" && continue
 			fi
@@ -283,15 +282,15 @@ EOF
 	check_net
 	# Check if package is specified
 	if [ -n "$2" ]; then
-		query-aur-pkg "$2"
-		pkg1="$in_aur"
+		query-pkg 'aur' "$2"
+		pkg1="$out_pkg"
 		# Check if additional "other" package is specified
 		if [ -n "$3" ]; then
-			query-repo-pkg "$3"
+			query-pkg 'repo' "$3"
 		else
-			query-repo-pkg "$2"
+			query-pkg 'repo' "$2"
 		fi
-		pkg2="$in_repo"
+		pkg2="$out_pkg"
 		# Check if changed
 		check-update
 	else
@@ -300,15 +299,15 @@ EOF
 		while read p; do
 			# Parse the line and get left (and right) package(s)
 			parse-and-set || continue
-			query-aur-pkg "$left"
-			pkg1="$in_aur"
+			query-pkg 'aur' "$left"
+			pkg1="$out_pkg"
 			# Check if additional "other" package is specified
 			if [ -n "$right" ]; then
-				query-repo-pkg "$right"
+				query-pkg 'repo' "$right"
 			else
-				query-repo-pkg "$left"
+				query-pkg 'repo' "$left"
 			fi
-			pkg2="$in_repo"
+			pkg2="$out_pkg"
 			check-update
 			# Unset the variables so that they can be used correctly in the next loop instance
 			unset left right pkg1 pkg2

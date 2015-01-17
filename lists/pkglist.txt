@@ -1,6 +1,0 @@
-# AUR pkg			# Repo pkg
-
-laptop-mode-tools
-xfce4-power-manager-pmu		xfce4-power-manager
-xfce4-session-consolekit	xfce4-session
-openresolv-openrc		openresolv

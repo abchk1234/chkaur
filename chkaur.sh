@@ -32,12 +32,12 @@ editor="/usr/bin/vim" # Editor for viewing/editing package lists.
 #----------------------------------------------------------------#
 
 # A note about the program architecture
-# To allow code reusability, parts are moved to functions;
-# however as strings cannot be passed between functions,
+# To allow code reusability, program is split into functions;
+# however as strings cannot be returned from functions,
 # so variables are set/unset.
 # This can a little tricky to track.
 
-# The common varibles that are set/unset are:
+# The common varibles that are set/unset in this way are:
 # left, right, pkg1, pkg2, out_pkg
 
 # Function to check if dependencies are installed
@@ -46,6 +46,8 @@ check_dep () {
 		echo "package-query not available. Please install it to run this application" && exit 1
 	fi
 }
+
+# Check for working internet connection
 check_net () {
 	if [ ! "$(ping -c 1 google.com)" ]; then
 		echo "Internet connection not available. Internet access is required for it to function" && exit 1
@@ -92,7 +94,7 @@ query-pkg () {
 	fi
 }
 
-# Parse the file specified and set left and right packages
+# Parse the file specified and set left and right package variables
 parse-and-set () {
 	# Check for empty lines and comments
 	if [ -z "$p" ]; then
@@ -106,6 +108,7 @@ parse-and-set () {
 		right=$(echo $p | cut -f 2 -d " ")
 		# Check if second package specified
 		if [ "$left" == "$right" ]; then
+			# right package not specified
 			unset right
 		fi
 	fi
@@ -142,7 +145,6 @@ chkaur -a  # Will take packages to check (repo to Arch repo) from archlist file
 chkaur -a xorg-server  # Check xorg-server version in repo to Arch repo
 chkaur -a eudev-systemdcompat systemd  # Compare pkg1 in repo to pkg2 in Arch
 chkaur -c yaourt downgrade  # Check repo packages to those in AUR
-
 EOF
 	;;
 -e)
@@ -260,3 +262,6 @@ EOF
 	fi
 	;;
 esac
+
+# Done
+exit 0

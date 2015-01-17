@@ -36,6 +36,8 @@ Blank lines and lines starting with # (comments) are ignored.
 Like before, a single line can contain one or two packages, with repo pkg on the left and Arch repo (local repo)
 package on the right..
 
+-------------------------------------------------------------------------------
+
 # Syntax
 
 ~~~~
@@ -47,7 +49,7 @@ package on the right..
 ~~~~
 ./chkaur.sh  # Will check packages specified in lists/pkglist.txt (AUR vs repo)
 
-./chkaur.sh -f  # Equivalent to above
+./chkaur.sh -f  # Equivalent to ./chkaur.sh
 
 ./chkaur.sh -f qbittorrent  # Check qbittorrent (AUR vs repo)
 
@@ -65,4 +67,8 @@ package on the right..
 
 ./chkaur.sh -e archlist  # View and edit lists/archlist.txt
 ~~~~
+
+# Notes
+
+Editor and location of the files can be specified in the beginning of the script.
 

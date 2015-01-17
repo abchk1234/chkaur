@@ -1,3 +1,0 @@
-# AUR pkg1		# AUR pkg2
-
-nbwmon			nbwmon-git

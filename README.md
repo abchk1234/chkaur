@@ -36,15 +36,6 @@ Blank lines and lines starting with # (comments) are ignored.
 Like before, a single line can contain one or two packages, with repo pkg on the left and Arch repo (local repo)
 package on the right..
 
--------------------------------------------------------------------------------
-
-```lists\ignlist.txt```: Contains list of packages that are ignored for updates
-
-Some packages may be known to have different version in AUR, but are not required to be updated.
-Such packages can be put in the ignored list, and may be taken out of it and into the pkglist if required.
-
-This is only informational in nature.
-
 # Syntax
 
 ~~~~

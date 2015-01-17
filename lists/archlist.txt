@@ -1,4 +1,4 @@
-# Package in repo	 # Package in Arch repo
+# Package in repo	 # Package in local Arch repo
 
 xfce4-power-manager-pmu	 xfce4-power-manager
 lxdm-consolekit		 lxdm

@@ -11,7 +11,7 @@ pkglist.txt: Contains list of packages to be checked for updates
 
 A single line can contain one or two packages.
 
-For example, if one wants to check package "downgrade" in repo and AUR, simply
+For example, if one wants to check package "downgrade" in AUR and repo, simply
 
 ~~~~
 downgrade
@@ -19,25 +19,22 @@ downgrade
 
 can be specified in the file.
 
-If one wants to check package "i-nex" in the repo to package "i-nex-git" from AUR,
+If one wants to check package "i-nex-git" in AUR to "i-nex" in the repo,
 
 ~~~~
-i-nex	i-nex-git
+i-nex-git		i-nex
 ~~~~
 
 The above format can be used.
+
+Blank lines and lines starting with # (comments) are ignored.
 
 -------------------------------------------------------------------------------
 
 archlist.txt: Contains list of packages to be checked for updates from a local copy of Arch repo (can be changed).
 
-Like before, a single line can contain one or two packages, with same syntax.
-
--------------------------------------------------------------------------------
-
-aurlist.txt: Contains list of AUR packages to be checked for updates from AUR
-
-Like before, a single line can contain one or two packages, with same syntax.
+Like before, a single line can contain one or two packages, with repo pkg on the left and Arch repo (local repo)
+package on the right..
 
 -------------------------------------------------------------------------------
 

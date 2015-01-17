@@ -26,9 +26,6 @@ pfile="./lists/pkglist.txt"
 # File from which to get arch repo packages
 afile="./lists/archlist.txt"
 
-# File from which to get aur packages
-ofile="./lists/aurlist.txt"
-
 # File from which to get list of ignored packages
 ifile="./lists/ignlist.txt"
 
@@ -239,41 +236,6 @@ EOF
 			# Unset the variables so that they can be used correctly in the next loop instance
 			unset left right pkg1 pkg2
 		done < $afile
-	fi
-	;;
--o)
-	# Check package in AUR against another package in the AUR
-	if [ -n "$2" ]; then
-		query-pkg 'aur' "$2"
-		pkg1="$out_pkg"
-		# Check if additional "other" package is specified
-		if [ -n "$3" ]; then
-			query-pkg 'aur' "$3"
-			pkg2="$out_pkg"
-		else
-			echo "second package not specified" && exit 1
-		fi
-		# Check if changed
-		check-update
-	else
-		check-pkg-file $ofile
-		# Check packages in package file for version changes
-		while read p; do
-			# Parse the line and get left (and right) package(s)
-			parse-and-set || continue
-			query-pkg 'aur' "$left"
-			pkg1="$out_pkg"
-			# Check if additional "other" package is specified
-			if [ -n "$right" ]; then
-				query-pkg 'aur' "$right"
-				pkg2="$out_pkg"
-			else
-				echo "$left: second package not specified" && continue
-			fi
-			check-update
-			# Unset the variables so that they can be used correctly in the next loop instance
-			unset left right pkg1 pkg2
-		done < $ofile
 	fi
 	;;
 *)
